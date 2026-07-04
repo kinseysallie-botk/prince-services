@@ -1,15 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-});
+export const supabase = createClient(
+  isSupabaseConfigured ? supabaseUrl : 'https://example.supabase.co',
+  isSupabaseConfigured ? supabaseAnonKey : 'public-anon-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
+);
+
+export { isSupabaseConfigured };
 
 // Admin API proxy - calls edge function instead of direct RPC for security
 export async function adminApi(action: 'login', payload: { password: string }): Promise<{ token?: string; error?: string }>;
@@ -20,6 +27,10 @@ export async function adminApi(action: 'update_booking', payload: { token: strin
 export async function adminApi(action: 'delete_booking', payload: { token: string; bookingId: string }): Promise<{ success?: boolean; error?: string }>;
 export async function adminApi(action: 'change_password', payload: { token: string; newPassword: string }): Promise<{ success?: boolean; error?: string }>;
 export async function adminApi(action: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  if (!isSupabaseConfigured) {
+    return { error: 'Supabase is not configured for this deployment.' };
+  }
+
   const response = await fetch(`${supabaseUrl}/functions/v1/admin-proxy`, {
     method: 'POST',
     headers: {
