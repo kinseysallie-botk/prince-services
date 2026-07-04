@@ -21,12 +21,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const gmailUser = Deno.env.get("GMAIL_USER");
-    const gmailAppPassword = Deno.env.get("GMAIL_APP_PASSWORD");
-    const recipientEmail = Deno.env.get("NOTIFICATION_EMAIL") || gmailUser;
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    const recipientEmail = Deno.env.get("NOTIFICATION_EMAIL") || "princetyler825@gmail.com";
 
-    if (!gmailUser || !gmailAppPassword) {
-      console.error("Gmail credentials not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD secrets.");
+    if (!resendKey) {
+      console.error("Resend API key not configured. Set RESEND_API_KEY secret.");
       return new Response(
         JSON.stringify({ error: "Email service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -74,14 +73,12 @@ Please contact the customer on WhatsApp within 30 minutes.
 </div>
     `.trim();
 
-    // Send email via Gmail SMTP using a simple SMTP client
-    const emailSent = await sendGmail({
+    const emailSent = await sendResendEmail({
+      apiKey: resendKey,
       to: recipientEmail,
       subject,
-      text: textBody,
       html: htmlBody,
-      gmailUser,
-      gmailAppPassword,
+      text: textBody,
     });
 
     if (!emailSent) {
@@ -104,80 +101,40 @@ Please contact the customer on WhatsApp within 30 minutes.
   }
 });
 
-async function sendGmail(opts: {
+async function sendResendEmail(opts: {
+  apiKey: string;
   to: string;
   subject: string;
   text: string;
   html: string;
-  gmailUser: string;
-  gmailAppPassword: string;
 }): Promise<boolean> {
-  // Gmail SMTP requires TLS. We use a raw TCP socket via Deno.connect to
-  // talk SMTP to smtp.gmail.com:465 (implicit TLS).
-  // Deno doesn't have a built-in SMTP client, so we implement a minimal one.
-
-  const { to, subject, text, html, gmailUser, gmailAppPassword } = opts;
-
-  const rawEmail = [
-    `From: Prince Services <${gmailUser}>`,
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    "MIME-Version: 1.0",
-    'Content-Type: text/html; charset=UTF-8',
-    "",
-    html,
-  ].join("\r\n");
+  const { apiKey, to, subject, text, html } = opts;
 
   try {
-    const conn = await Deno.connectTls({ hostname: "smtp.gmail.com", port: 465 });
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        from: "Prince Services <onboarding@resend.dev>",
+        to,
+        subject,
+        text,
+        html,
+      }),
+    });
 
-    const readLine = async (): Promise<string> => {
-      const buf = new Uint8Array(1024);
-      let line = "";
-      while (true) {
-        const n = await conn.read(buf);
-        if (n === null) break;
-        line += new TextDecoder().decode(buf.subarray(0, n));
-        if (line.includes("\r\n")) break;
-      }
-      return line.trim();
-    };
-
-    const send = (data: string) => {
-      conn.write(new TextEncoder().encode(data + "\r\n"));
-    };
-
-    await readLine(); // 220 greeting
-    send("EHLO localhost");
-    await readLine(); // response
-
-    send("AUTH LOGIN");
-    await readLine(); // 334
-    send(btoa(gmailUser));
-    await readLine(); // 334
-    send(btoa(gmailAppPassword));
-    const authResp = await readLine();
-    if (!authResp.startsWith("235")) {
-      conn.close();
-      console.error("Gmail auth failed:", authResp);
+    if (!response.ok) {
+      const bodyText = await response.text();
+      console.error("Resend email failed", response.status, bodyText);
       return false;
     }
 
-    send(`MAIL FROM:<${gmailUser}>`);
-    await readLine();
-    send(`RCPT TO:<${to}>`);
-    await readLine();
-    send("DATA");
-    await readLine();
-    send(rawEmail);
-    send(".");
-    const dataResp = await readLine();
-    send("QUIT");
-    conn.close();
-
-    return dataResp.startsWith("250");
+    return true;
   } catch (err) {
-    console.error("SMTP error:", err.message);
+    console.error("Resend request error:", err.message);
     return false;
   }
 }
