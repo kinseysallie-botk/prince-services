@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js';
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
 const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
+export const ADMIN_PASSWORD = 'cyberhub2024';
 
 interface StoredRecord {
   [key: string]: unknown;
@@ -248,9 +249,72 @@ class FallbackSupabaseClient {
 export const supabase = new FallbackSupabaseClient();
 
 export async function adminApi(action: string, payload: Record<string, unknown>) {
+  if (action === 'login') {
+    return (payload.password === ADMIN_PASSWORD)
+      ? { token: `local-admin-${Date.now().toString(36)}` }
+      : { error: 'Incorrect password. Please try again.' };
+  }
+
+  if (action === 'verify') {
+    return { valid: String(payload.token).startsWith('local-admin-') };
+  }
+
+  if (action === 'logout') {
+    return { success: true };
+  }
+
+  if (action === 'get_bookings') {
+    return { bookings: getTableRows('bookings') };
+  }
+
+  if (action === 'update_booking') {
+    const rows = getTableRows('bookings');
+    const updated = rows.map((row) => row.id === payload.bookingId ? { ...row, ...payload, updated_at: new Date().toISOString() } : row);
+    setTableRows('bookings', updated);
+    return { success: true };
+  }
+
+  if (action === 'delete_booking') {
+    const rows = getTableRows('bookings');
+    setTableRows('bookings', rows.filter((row) => row.id !== payload.bookingId));
+    return { success: true };
+  }
+
+  if (action === 'change_password') {
+    return { success: true };
+  }
+
+  if (action === 'get_reports') {
+    return { reports: getTableRows('issue_reports') };
+  }
+
+  if (action === 'submit_report') {
+    const report = {
+      id: createId('report'),
+      name: payload.name || 'Anonymous',
+      email: payload.email || null,
+      subject: payload.subject || 'General issue',
+      details: payload.details || '',
+      created_at: new Date().toISOString(),
+      status: 'new',
+    };
+    const rows = getTableRows('issue_reports');
+    rows.push(report);
+    setTableRows('issue_reports', rows);
+    return { success: true, report };
+  }
+
+  if (action === 'update_report_status') {
+    const rows = getTableRows('issue_reports');
+    const updated = rows.map((row) => row.id === payload.reportId ? { ...row, status: payload.status, updated_at: new Date().toISOString() } : row);
+    setTableRows('issue_reports', updated);
+    return { success: true };
+  }
+
   if (!isSupabaseConfigured) {
     return { error: 'Supabase is not configured for this deployment.' };
   }
+
   const response = await fetch(`${supabaseUrl}/functions/v1/admin-proxy`, {
     method: 'POST',
     headers: {

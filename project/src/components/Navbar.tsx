@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { GraduationCap, Heart, X, Menu, ExternalLink, Bell, LayoutGrid, Settings, User } from 'lucide-react';
+import { GraduationCap, Heart, X, Menu, ExternalLink, Bell, LayoutGrid, AlertCircle, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
+import { adminApi, supabase } from '../lib/supabase';
 import { navigate, type RouteName } from '../hooks/useHashRoute';
 
 const navLinks: { label: string; route: RouteName }[] = [
@@ -23,6 +23,10 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showGroupBanner, setShowGroupBanner] = useState(true);
   const [accountMenu, setAccountMenu] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportForm, setReportForm] = useState({ name: '', email: '', subject: '', details: '' });
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportMessage, setReportMessage] = useState('');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -43,6 +47,26 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
   const displayName = profile?.full_name
     ? profile.full_name.split(' ')[0]
     : user?.email?.split('@')[0] || 'Account';
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportForm.details.trim()) return;
+    setReportSubmitting(true);
+    setReportMessage('');
+    const result = await adminApi('submit_report', {
+      name: reportForm.name || 'Anonymous',
+      email: reportForm.email || null,
+      subject: reportForm.subject || 'General issue',
+      details: reportForm.details,
+    });
+    setReportSubmitting(false);
+    if (result.success) {
+      setReportMessage('Your report was saved. The admin team will review it shortly.');
+      setReportForm({ name: '', email: '', subject: '', details: '' });
+    } else {
+      setReportMessage('We could not save your report right now. Please try again.');
+    }
+  };
 
   return (
     <>
@@ -150,8 +174,8 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
                         <button onClick={() => { setAccountMenu(false); onOpenDashboard(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-cyan-50 transition-colors">
                           <LayoutGrid className="w-4 h-4 text-cyan-600" /> My Dashboard
                         </button>
-                        <button onClick={() => { setAccountMenu(false); window.location.hash = 'admin'; }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-50 transition-colors">
-                          <Settings className="w-4 h-4" /> Admin Panel
+                        <button onClick={() => { setAccountMenu(false); setReportOpen(true); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-cyan-50 transition-colors">
+                          <AlertCircle className="w-4 h-4 text-cyan-600" /> Report Issue
                         </button>
                       </div>
                     </>
@@ -170,11 +194,11 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
               )}
 
               <button
-                onClick={() => { setAccountMenu(false); window.location.hash = 'admin'; }}
+                onClick={() => { setAccountMenu(false); setReportOpen(true); }}
                 className="flex items-center gap-2 pl-3 pr-4 py-2 bg-slate-900 text-white rounded-full shadow-md hover:bg-slate-800 hover:scale-[1.02] transition-all"
               >
-                <Settings className="w-4 h-4" />
-                <span className="text-sm font-bold">Admin Panel</span>
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm font-bold">Report Issue</span>
               </button>
             </div>
 
@@ -216,14 +240,47 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
                   Sign In
                 </button>
               )}
-              <button onClick={() => { setMobileOpen(false); window.location.hash = 'admin'; }}
+              <button onClick={() => { setMobileOpen(false); setReportOpen(true); }}
                 className="block w-full py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold text-center">
-                Admin Panel
+                Report Issue
               </button>
             </div>
           </div>
         )}
       </nav>
+
+      {reportOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setReportOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Report an issue</h3>
+                <p className="text-sm text-gray-500">Tell us what is not working and we will review it.</p>
+              </div>
+              <button onClick={() => setReportOpen(false)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleReportSubmit} className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input value={reportForm.name} onChange={(e) => setReportForm({ ...reportForm, name: e.target.value })} placeholder="Your name" className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+                <input type="email" value={reportForm.email} onChange={(e) => setReportForm({ ...reportForm, email: e.target.value })} placeholder="Email (optional)" className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+              </div>
+              <input value={reportForm.subject} onChange={(e) => setReportForm({ ...reportForm, subject: e.target.value })} placeholder="Subject" className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+              <textarea rows={5} value={reportForm.details} onChange={(e) => setReportForm({ ...reportForm, details: e.target.value })} placeholder="Describe the issue..." className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 resize-none" required />
+              {reportMessage && <p className="text-sm text-cyan-700">{reportMessage}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setReportOpen(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700">Cancel</button>
+                <button type="submit" disabled={reportSubmitting || !reportForm.details.trim()} className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                  {reportSubmitting ? 'Sending...' : 'Send Report'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -7,6 +7,17 @@ import {
 } from 'lucide-react';
 import { supabase, Booking, BookingStatus, adminApi } from '../lib/supabase';
 
+interface ReportIssue {
+  id: string;
+  name: string;
+  email: string | null;
+  subject: string;
+  details: string;
+  status: 'new' | 'in_progress' | 'resolved';
+  created_at: string;
+  updated_at?: string;
+}
+
 // ─── Session Management ───────────────────────────────────────────────────────
 const SESSION_KEY = 'ps_admin_token';
 const getToken = () => sessionStorage.getItem(SESSION_KEY);
@@ -134,7 +145,6 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
             >
               ← Back to website
             </button>
-            <span className="text-gray-700 text-xs">Password: cyberhub2024</span>
           </div>
         </div>
 
@@ -316,7 +326,7 @@ function ChangePasswordModal({ token, onClose }: { token: string; onClose: () =>
 // ─── Main Admin Dashboard ─────────────────────────────────────────────────────
 export default function Admin() {
   const [token, setTokenState] = useState<string | null>(getToken);
-  const [view, setView] = useState<'home' | 'bookings'>('home');
+  const [view, setView] = useState<'home' | 'bookings' | 'reports'>('home');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -326,6 +336,7 @@ export default function Admin() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [showChangePw, setShowChangePw] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'cancelled'>('all');
+  const [reports, setReports] = useState<ReportIssue[]>([]);
 
   const fetchBookings = useCallback(async (tok: string) => {
     setLoading(true);
@@ -340,9 +351,19 @@ export default function Admin() {
     }
   }, []);
 
+  const fetchReports = useCallback(async (tok: string) => {
+    const result = await adminApi('get_reports', { token: tok });
+    if (!result.error) {
+      setReports((result.reports as ReportIssue[]) || []);
+    }
+  }, []);
+
   useEffect(() => {
-    if (token) fetchBookings(token);
-  }, [token, fetchBookings]);
+    if (token) {
+      fetchBookings(token);
+      fetchReports(token);
+    }
+  }, [token, fetchBookings, fetchReports]);
 
   const handleLogin = (tok: string) => setTokenState(tok);
 
@@ -380,7 +401,7 @@ export default function Admin() {
   if (view === 'home') {
     const tiles = [
       { icon: CalendarClock, label: 'Bookings', desc: 'View & manage all customer bookings', color: 'from-cyan-400 to-blue-600', glow: 'shadow-cyan-200', count: stats.total, onClick: () => { setView('bookings'); fetchBookings(token); } },
-      { icon: Users, label: 'Customers', desc: 'Manage user accounts & profiles', color: 'from-emerald-400 to-green-600', glow: 'shadow-emerald-200', count: 0, onClick: () => {} },
+      { icon: AlertCircle, label: 'Reports', desc: 'Review user-submitted issues and requests', color: 'from-violet-400 to-fuchsia-600', glow: 'shadow-violet-200', count: reports.length, onClick: () => { setView('reports'); fetchReports(token); } },
       { icon: BarChart3, label: 'Analytics', desc: 'Track performance & insights', color: 'from-amber-400 to-orange-600', glow: 'shadow-amber-200', count: stats.completed, onClick: () => {} },
       { icon: Settings, label: 'Settings', desc: 'Configure services & pricing', color: 'from-rose-400 to-pink-600', glow: 'shadow-rose-200', count: 0, onClick: () => {} },
     ];
@@ -436,6 +457,84 @@ export default function Admin() {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'reports') {
+    const updateReportStatus = async (reportId: string, status: ReportIssue['status']) => {
+      await adminApi('update_report_status', { token, reportId, status });
+      fetchReports(token!);
+    };
+
+    return (
+      <div className="min-h-screen bg-slate-50 font-sans">
+        <header className="bg-gradient-to-r from-[#060f1a] to-[#0d2137] border-b border-white/10 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-md">
+                <GraduationCap className="w-5 h-5 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <div className="text-white font-bold text-sm leading-none">Prince Services</div>
+                <div className="text-gray-400 text-[10px] mt-0.5">REPORTS</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setView('home')} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-300 hover:text-white text-xs font-semibold transition-colors rounded-lg hover:bg-white/10">
+                <ArrowLeft className="w-3.5 h-3.5" /> Back
+              </button>
+              <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white text-xs font-semibold transition-all">
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-extrabold text-gray-900">Issue Reports</h1>
+              <p className="text-gray-500 text-sm mt-0.5">Review issues submitted from the website.</p>
+            </div>
+            <div className="text-sm text-cyan-700 bg-cyan-50 px-3 py-1.5 rounded-full font-semibold">{reports.length} total</div>
+          </div>
+
+          {reports.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+              <AlertCircle className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-500 font-semibold">No reports yet</p>
+              <p className="text-gray-400 text-sm mt-1">Issues submitted by users will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reports.map((report) => (
+                <div key={report.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-bold text-gray-900">{report.subject}</h3>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${report.status === 'resolved' ? 'bg-emerald-50 text-emerald-700' : report.status === 'in_progress' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {report.status === 'resolved' ? 'Resolved' : report.status === 'in_progress' ? 'In progress' : 'New'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{report.details}</p>
+                      <div className="mt-3 text-xs text-gray-400">
+                        <span>{report.name}</span>
+                        {report.email ? <span> • {report.email}</span> : null}
+                        <span> • {new Date(report.created_at).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => updateReportStatus(report.id, 'in_progress')} className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">In progress</button>
+                      <button onClick={() => updateReportStatus(report.id, 'resolved')} className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Resolve</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
