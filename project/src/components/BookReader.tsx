@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, ChevronLeft, ChevronRight, BookOpen,
   ExternalLink, Download, Loader2, AlertCircle, Maximize2, CheckCircle, RefreshCw,
@@ -36,7 +36,8 @@ function getCoverUrl(formats: Record<string, string>): string | null {
 }
 
 const CORS_PROXIES = [
-  (url: string) => `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-book?url=${encodeURIComponent(url)}`,
+  (url: string) => url,
+  (url: string) => `https://r.jina.ai/http://${url.replace(/^https?:\/\//, '')}`,
   (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
 ];
@@ -90,6 +91,7 @@ export default function BookReader({ book, onClose }: BookReaderProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showTocMobile, setShowTocMobile] = useState(false);
   const [readingTime, setReadingTime] = useState(0);
+  const touchStartX = useRef<number | null>(null);
 
   const CHARS_PER_PAGE = 6000;
   const fontSizeMap = { small: '90%', normal: '100%', large: '115%', xlarge: '130%' };
@@ -271,11 +273,26 @@ export default function BookReader({ book, onClose }: BookReaderProps) {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
+  const handleTouchStart = (event: React.TouchEvent) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = (event.changedTouches[0]?.clientX ?? 0) - touchStartX.current;
+    if (delta > 50 && page > 0) {
+      setPage((p) => Math.max(0, p - 1));
+    } else if (delta < -50 && page < pages - 1) {
+      setPage((p) => Math.min(pages - 1, p + 1));
+    }
+    touchStartX.current = null;
+  };
+
   const progressPercent = pages > 0 ? Math.round(((page + 1) / pages) * 100) : 0;
 
   return (
-    <div className={`fixed inset-0 z-50 flex ${currentTheme.bg} ${fullscreen ? '' : 'p-2 sm:p-4'}`}>
-      <div className={`relative w-full grid ${fullscreen ? 'grid-cols-[280px_1fr_260px]' : 'grid-cols-[240px_1fr_220px]'} max-w-[1800px] mx-auto gap-0 ${fullscreen ? 'h-full' : 'h-full max-h-[92vh]'} rounded-3xl overflow-hidden shadow-2xl ${currentTheme.surface} border ${currentTheme.border}`}>
+    <div className={`fixed inset-0 z-50 flex ${currentTheme.bg} ${fullscreen ? '' : 'p-1 sm:p-3 md:p-4'}`}>
+      <div className={`relative w-full grid grid-cols-1 md:grid-cols-[240px_1fr_220px] max-w-[1800px] mx-auto gap-0 ${fullscreen ? 'h-full' : 'h-full max-h-[92vh]'} rounded-3xl overflow-hidden shadow-2xl ${currentTheme.surface} border ${currentTheme.border}`}>
 
         {/* Left Sidebar - Book Info & TOC */}
         <div className={`${currentTheme.surface} border-r ${currentTheme.border} flex-col overflow-hidden hidden md:flex`}>
@@ -436,7 +453,7 @@ export default function BookReader({ book, onClose }: BookReaderProps) {
               </button>
             )}
 
-            <div className="absolute inset-0 overflow-y-auto">
+            <div className="absolute inset-0 overflow-y-auto" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
               {loadingText && (
                 <div className="flex flex-col items-center justify-center h-full">
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'}`}>
@@ -475,7 +492,7 @@ export default function BookReader({ book, onClose }: BookReaderProps) {
 
               {/* Text Reader Mode */}
               {!loadingText && !fetchError && content && viewMode === 'reader' && (
-                <div className="max-w-3xl mx-auto px-8 sm:px-12 py-12" style={{ fontSize: fontSizeMap[fontSize] }}>
+                <div className="max-w-3xl mx-auto px-4 sm:px-8 md:px-12 py-6 sm:py-10 md:py-12" style={{ fontSize: fontSizeMap[fontSize] }}>
                   <div style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
                     {paragraphs.map((para, i) => {
                       const trimmed = para.trim();
@@ -512,29 +529,31 @@ export default function BookReader({ book, onClose }: BookReaderProps) {
 
           {/* Pagination Footer */}
           {!loadingText && !fetchError && content && viewMode === 'reader' && pages > 1 && (
-            <div className={`h-14 flex-shrink-0 ${currentTheme.surface} border-t ${currentTheme.border} flex items-center justify-between px-4`}>
-              <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${theme === 'dark' ? 'bg-white/10 text-gray-300 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                <ChevronLeft className="w-4 h-4" /> Prev
-              </button>
-              <div className="flex items-center gap-3">
-                <span className={`text-sm ${currentTheme.textMuted}`}>Page {page + 1} of {pages}</span>
-                <div className="hidden sm:flex gap-1">
-                  {Array.from({ length: Math.min(pages, 7) }, (_, i) => {
-                    const p = pages <= 7 ? i : page <= 3 ? i : page >= pages - 4 ? pages - 7 + i : page - 3 + i;
-                    return (
-                      <button key={p} onClick={() => setPage(p)}
-                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${p === page ? (theme === 'dark' ? 'bg-cyan-500 text-white' : 'bg-blue-600 text-white') : (theme === 'dark' ? 'bg-white/10 text-gray-400 hover:bg-white/20' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}`}>
-                        {p + 1}
-                      </button>
-                    );
-                  })}
+            <div className={`flex-shrink-0 ${currentTheme.surface} border-t ${currentTheme.border} px-3 py-2 sm:px-4 sm:py-3`}>
+              <div className="flex items-center justify-between gap-2">
+                <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${theme === 'dark' ? 'bg-white/10 text-gray-300 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                  <ChevronLeft className="w-4 h-4" /> <span className="hidden sm:inline">Prev</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs sm:text-sm ${currentTheme.textMuted}`}>Page {page + 1}/{pages}</span>
+                  <div className="hidden sm:flex gap-1">
+                    {Array.from({ length: Math.min(pages, 7) }, (_, i) => {
+                      const p = pages <= 7 ? i : page <= 3 ? i : page >= pages - 4 ? pages - 7 + i : page - 3 + i;
+                      return (
+                        <button key={p} onClick={() => setPage(p)}
+                          className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${p === page ? (theme === 'dark' ? 'bg-cyan-500 text-white' : 'bg-blue-600 text-white') : (theme === 'dark' ? 'bg-white/10 text-gray-400 hover:bg-white/20' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}`}>
+                          {p + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+                <button onClick={() => setPage(Math.min(pages - 1, page + 1))} disabled={page >= pages - 1}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${theme === 'dark' ? 'bg-white/10 text-gray-300 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                  <span className="hidden sm:inline">Next</span> <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
-              <button onClick={() => setPage(Math.min(pages - 1, page + 1))} disabled={page >= pages - 1}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${theme === 'dark' ? 'bg-white/10 text-gray-300 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                Next <ChevronRight className="w-4 h-4" />
-              </button>
             </div>
           )}
         </div>

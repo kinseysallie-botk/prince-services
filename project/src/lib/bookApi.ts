@@ -41,11 +41,23 @@ interface OpenLibraryBook {
   editions?: { key: string }[];
 }
 
-// Proxy URL for bypassing CORS restrictions
-const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-book?url=`;
+const PROXY_URLS = [
+  (target: string) => target,
+  (target: string) => `https://r.jina.ai/http://${target.replace(/^https?:\/\//, '')}`,
+  (target: string) => `https://corsproxy.io/?${encodeURIComponent(target)}`,
+  (target: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`,
+];
 
-function proxyFetch(url: string): Promise<Response> {
-  return fetch(PROXY_URL + encodeURIComponent(url));
+async function proxyFetch(url: string): Promise<Response> {
+  for (const buildUrl of PROXY_URLS) {
+    try {
+      const response = await fetch(buildUrl(url), { headers: { Accept: 'application/json,text/plain,text/html,*/*' } });
+      if (response.ok) return response;
+    } catch {
+      // Try the next fallback.
+    }
+  }
+  throw new Error('Unable to load books from the available sources.');
 }
 
 function mapGutenberg(b: GutenbergBook): UnifiedBook {
@@ -212,4 +224,4 @@ export async function fetchAllBooks(
 }
 
 // Export proxy URL for book reader component
-export const BOOK_PROXY_URL = PROXY_URL;
+export const BOOK_PROXY_URL = 'https://r.jina.ai/http://';
