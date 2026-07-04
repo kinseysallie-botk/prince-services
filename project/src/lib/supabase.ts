@@ -146,16 +146,36 @@ class FallbackQuery {
 }
 
 class FallbackSupabaseClient {
+  private listeners: Array<(event: string, session: Session | null) => void> = [];
+
+  private emitAuthState(event: string, session: Session | null) {
+    this.listeners.forEach((listener) => listener(event, session));
+  }
+
   public auth = {
     getSession: async () => {
       const state = readState();
       const user = state.user ? (state.user as User) : null;
       return { data: { session: user ? createSession(user) : null } };
     },
+    getUser: async () => {
+      const state = readState();
+      const user = state.user ? (state.user as User) : null;
+      return { data: { user } };
+    },
     onAuthStateChange: (callback: (event: string, session: Session | null) => void) => {
+      this.listeners.push(callback);
       const state = readState();
       if (state.user) callback('SIGNED_IN', createSession(state.user as User));
-      return { data: { subscription: { unsubscribe: () => undefined } } };
+      return {
+        data: {
+          subscription: {
+            unsubscribe: () => {
+              this.listeners = this.listeners.filter((listener) => listener !== callback);
+            },
+          },
+        },
+      };
     },
     signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
       const users = getTableRows('profiles');
@@ -171,6 +191,7 @@ class FallbackSupabaseClient {
       state.currentUserId = user.id;
       state.user = user;
       writeState(state);
+      this.emitAuthState('SIGNED_IN', createSession(user));
       return { data: { user }, error: null };
     },
     signUp: async ({ email, password, options }: { email: string; password: string; options?: { data?: Record<string, unknown> } }) => {
@@ -198,6 +219,7 @@ class FallbackSupabaseClient {
       state.currentUserId = user.id;
       state.user = user;
       writeState(state);
+      this.emitAuthState('SIGNED_IN', createSession(user));
       return { data: { user }, error: null };
     },
     signOut: async () => {
@@ -205,6 +227,7 @@ class FallbackSupabaseClient {
       state.currentUserId = null;
       state.user = null;
       writeState(state);
+      this.emitAuthState('SIGNED_OUT', null);
       return { error: null };
     },
   };

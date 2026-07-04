@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GraduationCap, Heart, MessageCircle, X, Menu, ExternalLink, Bell, LayoutGrid, Settings, User } from 'lucide-react';
+import { GraduationCap, Heart, X, Menu, ExternalLink, Bell, LayoutGrid, Settings, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { navigate, type RouteName } from '../hooks/useHashRoute';
@@ -169,16 +169,13 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
                 </button>
               )}
 
-              {/* WhatsApp green pill */}
-              <a
-                href="https://wa.me/254717171184"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 pl-3 pr-4 py-2 bg-green-500 text-white rounded-full shadow-md hover:bg-green-400 hover:scale-[1.02] transition-all"
+              <button
+                onClick={() => { setAccountMenu(false); window.location.hash = 'admin'; }}
+                className="flex items-center gap-2 pl-3 pr-4 py-2 bg-slate-900 text-white rounded-full shadow-md hover:bg-slate-800 hover:scale-[1.02] transition-all"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span className="text-sm font-bold">WhatsApp</span>
-              </a>
+                <Settings className="w-4 h-4" />
+                <span className="text-sm font-bold">Admin Panel</span>
+              </button>
             </div>
 
             {/* Mobile menu button */}
@@ -219,10 +216,10 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
                   Sign In
                 </button>
               )}
-              <a href="https://wa.me/254717171184" target="_blank" rel="noopener noreferrer"
-                className="block w-full py-2.5 bg-green-500 text-white rounded-full text-sm font-bold text-center">
-                WhatsApp
-              </a>
+              <button onClick={() => { setMobileOpen(false); window.location.hash = 'admin'; }}
+                className="block w-full py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold text-center">
+                Admin Panel
+              </button>
             </div>
           </div>
         )}
