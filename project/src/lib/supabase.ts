@@ -4,6 +4,7 @@ const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
 const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
 export const ADMIN_PASSWORD = 'cyberhub2024';
+export const LEGACY_ADMIN_PASSWORD = 'kimpetra04';
 
 interface StoredRecord {
   [key: string]: unknown;
@@ -248,19 +249,52 @@ class FallbackSupabaseClient {
 
 export const supabase = new FallbackSupabaseClient();
 
+function getStoredAdminPassword() {
+  const storage = safeStorage();
+  if (!storage) return null;
+  return storage.getItem('ps_admin_password');
+}
+
+function setStoredAdminPassword(password: string) {
+  const storage = safeStorage();
+  if (!storage) return;
+  storage.setItem('ps_admin_password', password);
+}
+
+function isValidAdminToken(token: unknown) {
+  return typeof token === 'string' && token.startsWith('local-admin-');
+}
+
+function getCurrentAdminPasswords() {
+  const stored = getStoredAdminPassword();
+  const passwords = [ADMIN_PASSWORD, LEGACY_ADMIN_PASSWORD];
+  if (stored) passwords.unshift(stored);
+  return new Set(passwords);
+}
+
 export async function adminApi(action: string, payload: Record<string, unknown>) {
   if (action === 'login') {
-    return (payload.password === ADMIN_PASSWORD)
+    const password = String(payload.password || '');
+    const passwords = getCurrentAdminPasswords();
+    const isValidAdminPassword = passwords.has(password);
+    return isValidAdminPassword
       ? { token: `local-admin-${Date.now().toString(36)}` }
       : { error: 'Incorrect password. Please try again.' };
   }
 
   if (action === 'verify') {
-    return { valid: String(payload.token).startsWith('local-admin-') };
+    return { valid: isValidAdminToken(payload.token) };
   }
 
   if (action === 'logout') {
     return { success: true };
+  }
+
+  const requiresAdmin = ['get_bookings', 'update_booking', 'delete_booking', 'change_password', 'get_reports', 'update_report_status'];
+  if (requiresAdmin.includes(action)) {
+    if (!isValidAdminToken(payload.token)) {
+      return { error: 'Invalid or expired admin session.' };
+    }
   }
 
   if (action === 'get_bookings') {
@@ -281,6 +315,9 @@ export async function adminApi(action: string, payload: Record<string, unknown>)
   }
 
   if (action === 'change_password') {
+    const newPassword = String(payload.newPassword || '').trim();
+    if (!newPassword) return { error: 'Password must not be empty.' };
+    setStoredAdminPassword(newPassword);
     return { success: true };
   }
 

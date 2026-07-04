@@ -91,7 +91,7 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
               <Shield className="w-5 h-5 text-cyan-400" />
               <h1 className="text-white font-extrabold text-2xl">Secure Login</h1>
             </div>
-            <p className="text-gray-400 text-sm">Enter the admin password to access the dashboard.</p>
+            <p className="text-gray-400 text-sm">Use the secure admin password to access the dashboard.</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -104,7 +104,7 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter admin password"
+                  placeholder="Enter password"
                   className="w-full pl-10 pr-12 py-3.5 bg-white/10 border border-white/15 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
                   autoFocus
                 />
@@ -359,10 +359,19 @@ export default function Admin() {
   }, []);
 
   useEffect(() => {
-    if (token) {
+    const verifyAdmin = async () => {
+      if (!token) return;
+      const result = await adminApi('verify', { token });
+      if (!result.valid) {
+        clearToken();
+        setTokenState(null);
+        return;
+      }
       fetchBookings(token);
       fetchReports(token);
-    }
+    };
+
+    verifyAdmin();
   }, [token, fetchBookings, fetchReports]);
 
   const handleLogin = (tok: string) => setTokenState(tok);

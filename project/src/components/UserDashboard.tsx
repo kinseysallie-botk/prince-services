@@ -78,6 +78,11 @@ export default function UserDashboard({ open, onClose, onOpenAuth }: UserDashboa
     donated: donations.reduce((sum, d) => sum + Number(d.amount), 0),
   };
 
+  const openAdmin = () => {
+    onClose();
+    window.location.hash = 'admin';
+  };
+
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
     { id: 'bookings', label: 'My Bookings', icon: FileText },
@@ -128,7 +133,7 @@ export default function UserDashboard({ open, onClose, onOpenAuth }: UserDashboa
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-cyan-500 animate-spin" /></div>
           ) : tab === 'overview' ? (
-            <OverviewTab stats={stats} bookings={bookings} setTab={setTab} />
+            <OverviewTab stats={stats} bookings={bookings} setTab={setTab} onOpenAdmin={openAdmin} />
           ) : tab === 'bookings' ? (
             <BookingsTab bookings={bookings} />
           ) : tab === 'donations' ? (
@@ -144,9 +149,9 @@ export default function UserDashboard({ open, onClose, onOpenAuth }: UserDashboa
   );
 }
 
-function OverviewTab({ stats, bookings, setTab }: {
+function OverviewTab({ stats, bookings, setTab, onOpenAdmin }: {
   stats: { total: number; pending: number; inProgress: number; completed: number; donations: number; donated: number };
-  bookings: Booking[]; setTab: (t: Tab) => void;
+  bookings: Booking[]; setTab: (t: Tab) => void; onOpenAdmin: () => void;
 }) {
   const cards = [
     { label: 'Total Bookings', value: stats.total, icon: FileText, color: 'text-cyan-700 bg-cyan-50', tab: 'bookings' as Tab },
@@ -168,6 +173,19 @@ function OverviewTab({ stats, bookings, setTab }: {
           </button>
         ))}
       </div>
+
+      <button onClick={onOpenAdmin} className="w-full bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-6 flex items-center justify-between hover:shadow-md transition-all text-left">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+            <Shield className="w-6 h-6 text-cyan-300" />
+          </div>
+          <div>
+            <div className="font-bold text-white">Admin Panel</div>
+            <div className="text-slate-300 text-sm">Open the secure admin dashboard for bookings and reports</div>
+          </div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-slate-300" />
+      </button>
 
       {/* Donations summary */}
       <button onClick={() => setTab('donations')} className="w-full bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-100 rounded-2xl p-6 flex items-center justify-between hover:shadow-md transition-all text-left">

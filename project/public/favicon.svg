@@ -1,45 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0f172a"/>
-      <stop offset="100%" style="stop-color:#1e293b"/>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07111f"/>
+      <stop offset="55%" stop-color="#13263f"/>
+      <stop offset="100%" stop-color="#1f3c66"/>
     </linearGradient>
-    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#06b6d4"/>
-      <stop offset="100%" style="stop-color:#3b82f6"/>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
     </linearGradient>
-    <linearGradient id="iconGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#22d3ee"/>
-      <stop offset="100%" style="stop-color:#60a5fa"/>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#dbeafe" stop-opacity="0.65"/>
     </linearGradient>
   </defs>
 
-  <!-- Background circle -->
-  <circle cx="256" cy="256" r="240" fill="url(#bgGrad)"/>
+  <rect width="512" height="512" rx="132" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="208" fill="none" stroke="url(#accent)" stroke-width="18" opacity="0.35"/>
+  <circle cx="256" cy="256" r="174" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="2"/>
 
-  <!-- P letter shape - modern geometric style -->
-  <g transform="translate(130, 100)">
-    <!-- Vertical stem -->
-    <rect x="0" y="0" width="70" height="312" rx="12" fill="url(#iconGrad)"/>
+  <path d="M168 136h78c42 0 76 34 76 76 0 42-34 76-76 76h-40v88h-38z" fill="url(#accent)"/>
+  <rect x="168" y="180" width="102" height="34" rx="10" fill="#07111f" opacity="0.9"/>
+  <rect x="168" y="228" width="70" height="22" rx="8" fill="#ffffff" opacity="0.9"/>
 
-    <!-- Bowl curve (top part) -->
-    <path d="M 70 0 L 200 0 Q 280 0 280 80 L 280 120 Q 280 200 200 200 L 70 200 Z" fill="url(#iconGrad2)"/>
-
-    <!-- Inner cutout for P -->
-    <rect x="70" y="50" width="160" height="100" rx="20" fill="url(#bgGrad)"/>
-
-    <!-- Horizontal connector -->
-    <rect x="0" y="250" width="150" height="62" rx="12" fill="url(#iconGrad2)"/>
-  </g>
-
-  <!-- Decorative dots -->
-  <circle cx="400" cy="400" r="25" fill="#06b6d4" opacity="0.6"/>
-  <circle cx="420" cy="360" r="15" fill="#3b82f6" opacity="0.4"/>
-  <circle cx="100" cy="120" r="20" fill="#22d3ee" opacity="0.5"/>
-
-  <!-- Shield-like accent -->
-  <path d="M 380 80 L 420 100 L 420 160 L 380 180 L 340 160 L 340 100 Z" fill="none" stroke="url(#iconGrad2)" stroke-width="8" opacity="0.4"/>
-
-  <!-- Inner P letter on shield -->
-  <text x="365" y="145" font-family="Arial, sans-serif" font-size="50" font-weight="bold" fill="url(#iconGrad)">P</text>
+  <path d="M316 168l38 38-38 38" stroke="url(#glow)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="338" cy="206" r="10" fill="#22d3ee"/>
+  <circle cx="372" cy="298" r="16" fill="#60a5fa" opacity="0.7"/>
+  <circle cx="144" cy="344" r="14" fill="#8b5cf6" opacity="0.65"/>
+  <path d="M128 112l38 20" stroke="#67e8f9" stroke-width="8" stroke-linecap="round" opacity="0.75"/>
+  <path d="M364 120l-24 26" stroke="#93c5fd" stroke-width="8" stroke-linecap="round" opacity="0.65"/>
 </svg>

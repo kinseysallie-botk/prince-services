@@ -43,7 +43,7 @@ const CORS_PROXIES = [
 ];
 
 function processText(raw: string): string {
-  let text = raw;
+  let text = raw.replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ').replace(/\t/g, ' ');
   const startMarkers = [
     '*** START OF THE PROJECT GUTENBERG',
     '*** START OF THIS PROJECT GUTENBERG',
@@ -71,7 +71,64 @@ function processText(raw: string): string {
     if (idx !== -1) { text = text.slice(0, idx); break; }
   }
 
-  return text.trim();
+  text = text
+    .replace(/([A-Za-z])-\s*\n\s*/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\s+|\s+$/g, '');
+
+  const lines = text.split('\n').map((line) => line.replace(/^\s+|\s+$/g, ''));
+  const blocks: string[] = [];
+  let currentBlock: string[] = [];
+
+  const flushBlock = () => {
+    if (!currentBlock.length) return;
+    const cleaned = currentBlock.join(' ').replace(/\s{2,}/g, ' ').replace(/([A-Za-z])\s+([.,;:!?])/g, '$1$2').trim();
+    if (cleaned) blocks.push(cleaned);
+    currentBlock = [];
+  };
+
+  const isHeading = (value: string) => /^(chapter|part|book|volume|section|prologue|epilogue|preface|contents|act|scene)\b/i.test(value) ||
+    (/^[A-Z0-9\s&:;,'".()-]{1,30}$/.test(value) && value.length < 35 && !/[.!?]/.test(value));
+
+  const isDialogue = (value: string) => /^([A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)*)\s*:\s*/.test(value) || /^(["“][^"”]+["”])$/.test(value);
+
+  for (const rawLine of lines) {
+    const normalized = rawLine.replace(/^[-*•]+/, '').replace(/^\d+\s*$/, '').trim();
+    if (!normalized) {
+      flushBlock();
+      continue;
+    }
+
+    if (/^(copyright|all rights reserved|printed in|project gutenberg|this ebook is)/i.test(normalized)) continue;
+
+    if (isHeading(normalized)) {
+      flushBlock();
+      blocks.push(normalized);
+      continue;
+    }
+
+    if (isDialogue(normalized) || normalized.length < 45) {
+      if (currentBlock.length > 0 && !isDialogue(currentBlock[currentBlock.length - 1]) && !/^[A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)*$/.test(currentBlock[currentBlock.length - 1])) {
+        flushBlock();
+      }
+      currentBlock.push(normalized);
+      continue;
+    }
+
+    if (currentBlock.length > 0 && (currentBlock[currentBlock.length - 1].endsWith('.') || currentBlock[currentBlock.length - 1].endsWith('!') || currentBlock[currentBlock.length - 1].endsWith('?') || normalized.length > 140)) {
+      flushBlock();
+    }
+
+    currentBlock.push(normalized);
+  }
+
+  flushBlock();
+
+  return blocks
+    .map((block) => block.replace(/\s+/g, ' ').trim())
+    .join('\n\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 type Theme = 'light' | 'sepia' | 'dark';
@@ -498,10 +555,11 @@ export default function BookReader({ book, onClose }: BookReaderProps) {
                       const trimmed = para.trim();
                       const isChapterHeading = /^(chapter|part|book|volume|section|prologue|epilogue|introduction|preface)\s*[IVXLCDMivxlcdm0-9]*\.?\s*$/i.test(trimmed) ||
                         (trimmed.length < 60 && trimmed === trimmed.toUpperCase() && !trimmed.includes('.'));
+                      const isDialogue = /^([A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)*)\s*:\s*/.test(trimmed) || /^(["“][^"”]+["”])$/.test(trimmed);
                       return isChapterHeading ? (
                         <h2 key={i} className={`font-bold text-center my-10 tracking-widest text-sm uppercase ${currentTheme.accent}`}>{trimmed}</h2>
                       ) : (
-                        <p key={i} className={`leading-relaxed mb-6 indent-8 ${currentTheme.text}`}>{trimmed}</p>
+                        <p key={i} className={`leading-relaxed mb-6 ${isDialogue ? 'pl-6 border-l border-cyan-400/40 italic' : 'indent-8'} ${currentTheme.text}`}>{trimmed}</p>
                       );
                     })}
                     {page === pages - 1 && (

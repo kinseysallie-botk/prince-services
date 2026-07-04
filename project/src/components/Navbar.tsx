@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GraduationCap, Heart, X, Menu, ExternalLink, Bell, LayoutGrid, AlertCircle, User } from 'lucide-react';
+import { Heart, X, Menu, ExternalLink, Bell, LayoutGrid, AlertCircle, Settings, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { adminApi, supabase } from '../lib/supabase';
 import { navigate, type RouteName } from '../hooks/useHashRoute';
@@ -108,7 +108,7 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
               className="flex items-center gap-3 flex-shrink-0 group"
             >
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-                <GraduationCap className="w-5 h-5 text-white" />
+                <span className="text-lg font-black text-white">P</span>
               </div>
               <div className="leading-tight text-left">
                 <div className="font-extrabold text-gray-900 text-[15px] leading-none">Prince</div>
@@ -174,8 +174,8 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
                         <button onClick={() => { setAccountMenu(false); onOpenDashboard(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-cyan-50 transition-colors">
                           <LayoutGrid className="w-4 h-4 text-cyan-600" /> My Dashboard
                         </button>
-                        <button onClick={() => { setAccountMenu(false); setReportOpen(true); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-cyan-50 transition-colors">
-                          <AlertCircle className="w-4 h-4 text-cyan-600" /> Report Issue
+                        <button onClick={() => { setAccountMenu(false); navigate({ name: 'admin' }); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-slate-50 transition-colors">
+                          <Settings className="w-4 h-4 text-slate-700" /> Admin Panel
                         </button>
                       </div>
                     </>
@@ -194,11 +194,11 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
               )}
 
               <button
-                onClick={() => { setAccountMenu(false); setReportOpen(true); }}
+                onClick={() => { setAccountMenu(false); navigate({ name: 'admin' }); }}
                 className="flex items-center gap-2 pl-3 pr-4 py-2 bg-slate-900 text-white rounded-full shadow-md hover:bg-slate-800 hover:scale-[1.02] transition-all"
               >
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm font-bold">Report Issue</span>
+                <Settings className="w-4 h-4" />
+                <span className="text-sm font-bold">Admin Panel</span>
               </button>
             </div>
 
@@ -232,17 +232,22 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
             </button>
             <div className="pt-3 space-y-2 border-t border-gray-100">
               {user ? (
-                <button onClick={() => { setMobileOpen(false); onOpenDashboard(); }} className="w-full py-2.5 border border-gray-200 text-gray-700 rounded-full text-sm font-semibold">
-                  My Dashboard
-                </button>
+                <>
+                  <button onClick={() => { setMobileOpen(false); onOpenDashboard(); }} className="w-full py-2.5 border border-gray-200 text-gray-700 rounded-full text-sm font-semibold">
+                    My Dashboard
+                  </button>
+                  <button onClick={() => { setMobileOpen(false); navigate({ name: 'admin' }); }} className="w-full py-2.5 bg-slate-900 text-white rounded-full text-sm font-semibold">
+                    Admin Panel
+                  </button>
+                </>
               ) : (
                 <button onClick={() => { setMobileOpen(false); onOpenAuth(); }} className="w-full py-2.5 border border-gray-200 text-gray-700 rounded-full text-sm font-semibold">
                   Sign In
                 </button>
               )}
-              <button onClick={() => { setMobileOpen(false); setReportOpen(true); }}
+              <button onClick={() => { setMobileOpen(false); navigate({ name: 'admin' }); }}
                 className="block w-full py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold text-center">
-                Report Issue
+                Admin Panel
               </button>
             </div>
           </div>

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 
-export type RouteName = 'home' | 'services' | 'why-us' | 'process' | 'contact' | 'donate' | 'library' | 'updates';
+export type RouteName = 'home' | 'services' | 'why-us' | 'process' | 'contact' | 'donate' | 'library' | 'updates' | 'admin';
 
 export type Route = { name: RouteName };
 
 export function parseHash(): Route {
   const hash = window.location.hash.replace(/^#/, '');
-  const valid: RouteName[] = ['services', 'why-us', 'process', 'contact', 'donate', 'library', 'updates'];
+  const valid: RouteName[] = ['services', 'why-us', 'process', 'contact', 'donate', 'library', 'updates', 'admin'];
   if (valid.includes(hash as RouteName)) return { name: hash as RouteName };
   return { name: 'home' };
 }

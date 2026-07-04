@@ -60,12 +60,18 @@ async function proxyFetch(url: string): Promise<Response> {
   throw new Error('Unable to load books from the available sources.');
 }
 
+function buildGutenbergCoverUrl(id: number) {
+  return `https://www.gutenberg.org/cache/epub/${id}/pg${id}.cover.medium.jpg`;
+}
+
 function mapGutenberg(b: GutenbergBook): UnifiedBook {
+  const cover = b.formats['image/jpeg'] || b.formats['image/png'] || b.formats['image/jpg'] || buildGutenbergCoverUrl(b.id);
+
   return {
     id: `g-${b.id}`,
     title: b.title,
     author: b.authors.map((a) => a.name).join(', ') || 'Unknown',
-    cover: b.formats['image/jpeg'] || null,
+    cover,
     subjects: b.subjects.slice(0, 4),
     readUrl: b.formats['text/html'] || b.formats['text/html; charset=utf-8'] || null,
     downloadUrl: b.formats['application/epub+zip'] || b.formats['application/pdf'] || null,
