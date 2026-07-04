@@ -1,0 +1,44 @@
+{
+  "name": "Prince Services - Cyber Hub",
+  "short_name": "Prince",
+  "description": "Your one-stop cyber services hub. Cybersecurity, web design, KRA filing, academic writing, library, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#06b6d4",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "id": "/",
+  "categories": ["business", "productivity", "education", "books"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Book a Service",
+      "url": "/?action=book",
+      "description": "Quickly book a service"
+    },
+    {
+      "name": "Library",
+      "url": "/?page=library",
+      "description": "Browse the book library"
+    },
+    {
+      "name": "Admin Portal",
+      "url": "/?page=admin",
+      "description": "Manage bookings"
+    }
+  ]
+}
