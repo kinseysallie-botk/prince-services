@@ -131,7 +131,7 @@ export default function BookingModal({ open, onClose, preselectedService }: Book
       }
     }
 
-    const { data, error: dbError } = await supabase
+    const { data: insertData, error: dbError } = await supabase
       .from('bookings')
       .insert({
         name: form.name,
@@ -140,11 +140,11 @@ export default function BookingModal({ open, onClose, preselectedService }: Book
         service: form.service || 'General Enquiry',
         message: enrichedMessage || null,
         user_id: user?.id || null,
-      })
-      .select('id')
-      .maybeSingle();
+      });
 
     setLoading(false);
+
+    const data = Array.isArray(insertData) ? insertData[0] : insertData;
 
     if (dbError || !data) {
       setError('Could not submit your booking. Please try again.');

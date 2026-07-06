@@ -174,9 +174,6 @@ export default function Navbar({ onOpenAuth, onOpenDashboard }: NavbarProps) {
                         <button onClick={() => { setAccountMenu(false); onOpenDashboard(); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-cyan-50 transition-colors">
                           <LayoutGrid className="w-4 h-4 text-cyan-600" /> My Dashboard
                         </button>
-                        <button onClick={() => { setAccountMenu(false); navigate({ name: 'admin' }); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-slate-50 transition-colors">
-                          <Settings className="w-4 h-4 text-slate-700" /> Admin Panel
-                        </button>
                       </div>
                     </>
                   )}
